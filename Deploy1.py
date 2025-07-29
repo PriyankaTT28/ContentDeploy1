@@ -1,25 +1,25 @@
 import streamlit as st
 import openai
 
-# Page setup
+# Setup Streamlit page
 st.set_page_config(page_title="Social Media Buzz Generator", layout="centered")
 st.title("📣 Social Media Post Generator")
-st.markdown("Generate buzz-worthy posts for LinkedIn, Instagram, and Twitter with an AI-generated image!")
+st.markdown("Create viral posts for LinkedIn, Instagram, and Twitter with an AI-generated image!")
 
-# Input: OpenAI API key
+# Get OpenAI API key
 openai_api_key = st.text_input("🔑 Enter your OpenAI API Key", type="password")
 if not openai_api_key:
     st.warning("Please enter your OpenAI API key to proceed.")
     st.stop()
 
-# Set OpenAI key (don't store it)
+# Set API key
 openai.api_key = openai_api_key
 
-# Input: Instruction and language
+# Inputs
 instruction = st.text_area("📝 What do you want to announce?", placeholder="E.g. Launching our new AI health tracker...")
 language = st.selectbox("🌐 Choose language", ["English", "Hindi", "Spanish", "French", "German", "Chinese"])
 
-# Button to generate
+# Button
 if st.button("✨ Generate Posts and Image") and instruction:
 
     with st.spinner("Generating content..."):
@@ -27,44 +27,52 @@ if st.button("✨ Generate Posts and Image") and instruction:
         def generate_post(platform):
             word_limit = "200-300 words" if platform == "LinkedIn" else "under 150 words"
             prompt = (
-                f"Write an exciting, buzz-worthy social media post in {language} about the following announcement:\n\n"
+                f"Write an exciting, buzz-worthy social media post in {language} about this announcement:\n\n"
                 f"{instruction}\n\n"
                 f"Format it for {platform}, within {word_limit}."
             )
-            response = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8
-            )
-            return response.choices[0].message.content.strip()
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4o",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.8
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                return f"❌ Error generating {platform} post: {str(e)}"
 
         def generate_image(prompt_text):
-            img_response = openai.Image.create(
-                model="dall-e-3",
-                prompt=f"Illustration style image representing: {prompt_text}",
-                n=1,
-                size="1024x1024"
-            )
-            return img_response["data"][0]["url"]
+            try:
+                img_response = openai.Image.create(
+                    model="dall-e-3",
+                    prompt=f"Illustration style image representing: {prompt_text}",
+                    n=1,
+                    size="1024x1024"
+                )
+                return img_response["data"][0]["url"]
+            except Exception as e:
+                return None
 
-        # Generate posts
+        # Create posts
         platforms = ["LinkedIn", "Instagram", "Twitter"]
         posts = {p: generate_post(p) for p in platforms}
 
-        # Generate image
+        # Create image
         image_url = generate_image(instruction)
 
-        # Show posts
+        # Display results
         st.subheader("📄 Generated Posts")
         for p in platforms:
             st.markdown(f"### {p}")
             st.write(posts[p])
 
-        # Show image
         st.subheader("🖼️ AI-generated Image")
-        st.image(image_url, use_column_width=True)
+        if image_url:
+            st.image(image_url, use_column_width=True)
+        else:
+            st.error("Image generation failed. Try again later or check your OpenAI key.")
 
-        # Save in session
+        # Store history
         if "history" not in st.session_state:
             st.session_state["history"] = []
         st.session_state["history"].append({
@@ -73,7 +81,7 @@ if st.button("✨ Generate Posts and Image") and instruction:
             "image_url": image_url
         })
 
-# History in sidebar
+# Sidebar history
 if "history" in st.session_state and st.session_state["history"]:
     st.sidebar.title("🕒 Previous Generations")
     for idx, item in enumerate(st.session_state["history"][::-1]):
