@@ -1,25 +1,25 @@
 import streamlit as st
 import openai
 
-# Setup Streamlit page
+# Page setup
 st.set_page_config(page_title="Social Media Buzz Generator", layout="centered")
 st.title("📣 Social Media Post Generator")
 st.markdown("Create viral posts for LinkedIn, Instagram, and Twitter with an AI-generated image!")
 
-# Get OpenAI API key
+# Input API Key
 openai_api_key = st.text_input("🔑 Enter your OpenAI API Key", type="password")
 if not openai_api_key:
     st.warning("Please enter your OpenAI API key to proceed.")
     st.stop()
 
-# Set API key
-openai.api_key = openai_api_key
+# Set the API key for the OpenAI client
+client = openai.OpenAI(api_key=openai_api_key)
 
 # Inputs
 instruction = st.text_area("📝 What do you want to announce?", placeholder="E.g. Launching our new AI health tracker...")
 language = st.selectbox("🌐 Choose language", ["English", "Hindi", "Spanish", "French", "German", "Chinese"])
 
-# Button
+# Generate button
 if st.button("✨ Generate Posts and Image") and instruction:
 
     with st.spinner("Generating content..."):
@@ -32,7 +32,7 @@ if st.button("✨ Generate Posts and Image") and instruction:
                 f"Format it for {platform}, within {word_limit}."
             )
             try:
-                response = openai.ChatCompletion.create(
+                response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.8
@@ -43,21 +43,19 @@ if st.button("✨ Generate Posts and Image") and instruction:
 
         def generate_image(prompt_text):
             try:
-                img_response = openai.Image.create(
+                img_response = client.images.generate(
                     model="dall-e-3",
                     prompt=f"Illustration style image representing: {prompt_text}",
                     n=1,
                     size="1024x1024"
                 )
-                return img_response["data"][0]["url"]
+                return img_response.data[0].url
             except Exception as e:
                 return None
 
-        # Create posts
+        # Generate for all platforms
         platforms = ["LinkedIn", "Instagram", "Twitter"]
         posts = {p: generate_post(p) for p in platforms}
-
-        # Create image
         image_url = generate_image(instruction)
 
         # Display results
@@ -72,7 +70,7 @@ if st.button("✨ Generate Posts and Image") and instruction:
         else:
             st.error("Image generation failed. Try again later or check your OpenAI key.")
 
-        # Store history
+        # Store in session state
         if "history" not in st.session_state:
             st.session_state["history"] = []
         st.session_state["history"].append({
