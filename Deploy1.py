@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+import openai
 
 # Page setup
 st.set_page_config(page_title="Social Media Buzz Generator", layout="centered")
@@ -12,8 +12,8 @@ if not openai_api_key:
     st.warning("Please enter your OpenAI API key to proceed.")
     st.stop()
 
-# Initialize OpenAI client
-client = OpenAI(api_key=openai_api_key)
+# Set OpenAI key (don't store it)
+openai.api_key = openai_api_key
 
 # Input: Instruction and language
 instruction = st.text_area("📝 What do you want to announce?", placeholder="E.g. Launching our new AI health tracker...")
@@ -31,7 +31,7 @@ if st.button("✨ Generate Posts and Image") and instruction:
                 f"{instruction}\n\n"
                 f"Format it for {platform}, within {word_limit}."
             )
-            response = client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.8
@@ -39,15 +39,15 @@ if st.button("✨ Generate Posts and Image") and instruction:
             return response.choices[0].message.content.strip()
 
         def generate_image(prompt_text):
-            img_response = client.images.generate(
+            img_response = openai.Image.create(
                 model="dall-e-3",
                 prompt=f"Illustration style image representing: {prompt_text}",
                 n=1,
                 size="1024x1024"
             )
-            return img_response.data[0].url
+            return img_response["data"][0]["url"]
 
-        # Generate posts for all platforms
+        # Generate posts
         platforms = ["LinkedIn", "Instagram", "Twitter"]
         posts = {p: generate_post(p) for p in platforms}
 
@@ -64,7 +64,7 @@ if st.button("✨ Generate Posts and Image") and instruction:
         st.subheader("🖼️ AI-generated Image")
         st.image(image_url, use_column_width=True)
 
-        # Store in session state
+        # Save in session
         if "history" not in st.session_state:
             st.session_state["history"] = []
         st.session_state["history"].append({
@@ -73,8 +73,8 @@ if st.button("✨ Generate Posts and Image") and instruction:
             "image_url": image_url
         })
 
-# Show past generations
-if "history" in st.session_state and len(st.session_state["history"]) > 0:
+# History in sidebar
+if "history" in st.session_state and st.session_state["history"]:
     st.sidebar.title("🕒 Previous Generations")
     for idx, item in enumerate(st.session_state["history"][::-1]):
         st.sidebar.markdown(f"**{len(st.session_state['history']) - idx}.** {item['instruction'][:50]}...")
